@@ -1,3 +1,11 @@
+CREATE TABLE `pre_staging` (
+ `pos_id` varchar(50) NOT NULL,
+ `terminal_id` varchar(50) NOT NULL,
+ `tran_type` varchar(5) NOT NULL,
+ `line_no` int NOT NULL,
+ `data` varchar(300) NOT NULL
+)
+
 CREATE TABLE `staging` (
  `id` varchar(50) NOT NULL,
  `created_at` varchar(50) NOT NULL,
