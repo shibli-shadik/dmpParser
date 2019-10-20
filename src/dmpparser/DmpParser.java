@@ -122,15 +122,18 @@ public class DmpParser
         
         if(result.size() > 0)
         {
+            boolean flag = false;
             for (String s : result)
             {
-                //New code
-                //loadDataNew(SRC_FOLDER + "\\" + s);
-                //moveFile(SRC_FOLDER + "\\" + s, DEST_FOLDER + "\\" + s);
                 System.out.println(s);
-                preStaging(SRC_FOLDER + "\\" + s); //1
-                staging(); //2
-                moveFile(SRC_FOLDER + "\\" + s, DEST_FOLDER + "\\" + s);//3
+                flag = checkFile(SRC_FOLDER + "\\" + s);
+                
+                if(flag == true)
+                {
+                    preStaging(SRC_FOLDER + "\\" + s); //1
+                    staging(); //2
+                    moveFile(SRC_FOLDER + "\\" + s, DEST_FOLDER + "\\" + s);//3
+                }
             }
         }
         else
@@ -138,6 +141,65 @@ public class DmpParser
             saveErrorLog("Read Files", "There is no file to read");
             System.out.println("There is no file to read");
         }
+    }
+    
+    private static boolean checkFile(String fileName)
+    {
+        boolean flag = true;
+        BufferedReader reader = null;
+        String line = null;
+        String[] splitLine;
+        
+        try
+        {
+            reader = new BufferedReader(new FileReader(fileName));
+            
+            while((line = reader.readLine()) != null)
+            {
+                splitLine = line.split("\\|");
+                
+                if("1".equals(splitLine[1]))
+                {
+                    if(splitLine.length != 6)
+                    {
+                        flag = false;
+                        break;
+                    }
+                }
+                if("2".equals(splitLine[1]))
+                {
+                    if(splitLine.length != 8)
+                    {
+                        flag = false;
+                        break;
+                    }
+                }
+            }
+        }
+        catch (FileNotFoundException  ex)
+        {
+            saveErrorLog("Check File", ex.toString());
+            System.out.println(ex.toString());
+        }
+        catch (IOException ex)
+        {
+            saveErrorLog("Check File", ex.toString());
+            System.out.println(ex.toString());
+        }
+        finally
+        {
+            try
+            {
+                reader.close();
+            }
+            catch (IOException ex)
+            {
+                saveErrorLog("Check File", ex.toString());
+                System.out.println(ex.toString());
+            }
+        }
+        
+        return flag;
     }
     
     private static void preStaging(String fileName)
