@@ -7,7 +7,8 @@ CREATE TABLE `pre_staging` (
 )
 
 CREATE TABLE `staging` (
- `id` varchar(50) NOT NULL,
+ `pos_id` varchar(50) NOT NULL,
+ `terminal_id` varchar(50) NOT NULL,
  `created_at` varchar(50) NOT NULL,
  `tran_type` varchar(5) NOT NULL,
  `amount` varchar(50) NOT NULL,
