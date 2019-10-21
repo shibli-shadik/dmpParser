@@ -133,7 +133,7 @@ public class DmpParser
             boolean flag = false;
             for (String s : result)
             {
-                System.out.println(s);
+                //System.out.println(s);
                 flag = checkFile(SRC_FOLDER + "\\" + s);
                 
                 if(flag == true)
@@ -352,7 +352,7 @@ public class DmpParser
                 i++;
             }
             
-            displayArray(strInitArr);
+            //displayArray(strInitArr);
             //System.out.println(rs.getString(1) + "  " + rs.getString(2)+ "  " + rs.getString(3)+ "  " + rs.getInt(4)+ "  " + rs.getString(5));
             
             conn.close();
@@ -371,8 +371,8 @@ public class DmpParser
             {
                 if((j+1) < strInitArr.length && "2".equals(strInitArr[j+1][0]))
                 {
-                    System.out.println(strInitArr[j][0] + " " + strInitArr[j][1]);
-                    System.out.println(strInitArr[j+1][0] + " " + strInitArr[j+1][1]);
+                    //System.out.println(strInitArr[j][0] + " " + strInitArr[j][1]);
+                    //System.out.println(strInitArr[j+1][0] + " " + strInitArr[j+1][1]);
                     
                     //Process data to save staging table
                     String[] splitLine1 = strInitArr[j][1].split("\\|");
@@ -580,7 +580,7 @@ public class DmpParser
             
             while(rs.next())
             {
-                System.out.println(rs.getString(4) + "  " + rs.getString(5) + "  " + rs.getString(6));
+                //System.out.println(rs.getString(4) + "  " + rs.getString(5) + "  " + rs.getString(6));
                 parseData(rs.getString(4), rs.getString(5), rs.getString(6), rs.getString(8));
             }
             
