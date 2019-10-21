@@ -38,6 +38,7 @@ public class DmpParser
 {
     private static String SRC_FOLDER = null;
     private static String DEST_FOLDER = null;
+    private static String ERR_FOLDER = null;
     private static String DB_CONN_URL = null;
     private static String DB_USER = null;
     private static String DB_PASS = null;
@@ -73,6 +74,10 @@ public class DmpParser
                 else if("DEST_FOLDER".equals(splitLine[0]))
                 {
                     DEST_FOLDER = splitLine[1];
+                }
+                else if("ERR_FOLDER".equals(splitLine[0]))
+                {
+                    ERR_FOLDER = splitLine[1];
                 }
                 else if("DB_CONN_URL".equals(splitLine[0]))
                 {
@@ -133,6 +138,10 @@ public class DmpParser
                     preStaging(SRC_FOLDER + "\\" + s); //1
                     staging(); //2
                     moveFile(SRC_FOLDER + "\\" + s, DEST_FOLDER + "\\" + s);//3
+                }
+                else //Move file error folder
+                {
+                    moveFile(SRC_FOLDER + "\\" + s, ERR_FOLDER + "\\" + s);
                 }
             }
         }
