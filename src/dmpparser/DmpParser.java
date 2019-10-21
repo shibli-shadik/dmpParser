@@ -47,7 +47,10 @@ public class DmpParser
     public static void main(String[] args)
     {
         readConfigFile();
-        readFiles();
+        //readFiles();
+        
+        //Read from file_register table 
+        readNewFiles();
     }
     
     private static void readConfigFile()
@@ -152,6 +155,49 @@ public class DmpParser
         }
     }
     
+    private static void readNewFiles()
+    {
+        try
+        {
+            Class.forName("com.mysql.jdbc.Driver");
+            Connection conn = DriverManager.getConnection(DB_CONN_URL, DB_USER, DB_PASS);
+            Statement stmt = conn.createStatement();
+            
+            ResultSet rs = stmt.executeQuery("SELECT * FROM `file_register` WHERE status = 0");
+                
+            boolean flag = false;
+            String fileName = "";
+            String registerId = "";
+            int totalLine = 0;
+            
+            while(rs.next())
+            {
+                //System.out.println(rs.getString(1) + "  " + rs.getString(2));
+                registerId = rs.getString(1);
+                fileName = rs.getString(2);
+                flag = checkFile(SRC_FOLDER + "\\" + fileName);
+                
+                if(flag == true)
+                {
+                    totalLine = preStaging(SRC_FOLDER + "\\" + fileName); //1
+                    staging(); //2
+                    moveFile(SRC_FOLDER + "\\" + fileName, DEST_FOLDER + "\\" + fileName);//3
+                    updateRegister(FileStatus.PROCESSED.ordinal(), totalLine, Long.parseLong(registerId));//4
+                }
+                else //Move file error folder
+                {
+                    moveFile(SRC_FOLDER + "\\" + fileName, ERR_FOLDER + "\\" + fileName);
+                    updateRegister(FileStatus.REJECTED.ordinal(), totalLine, Long.parseLong(registerId));
+                }
+            }
+        }
+        catch (ClassNotFoundException | SQLException ex)
+        {
+            saveErrorLog("Read New Files", ex.toString());
+            System.out.println(ex.toString());
+        }
+    }
+    
     private static boolean checkFile(String fileName)
     {
         boolean flag = true;
@@ -211,7 +257,7 @@ public class DmpParser
         return flag;
     }
     
-    private static void preStaging(String fileName)
+    private static int preStaging(String fileName)
     {
         BufferedReader reader = null;
         String line = null;
@@ -220,6 +266,7 @@ public class DmpParser
         String posId = null;
         String terminalId = null;
         String tranType = null;
+        int totalLine = 0;
         
         deletePreStagingInfo();
         
@@ -246,8 +293,8 @@ public class DmpParser
                 
                 //System.out.println(tranType +" "+lineNo+" "+posId+" "+terminalId + " "+line);
                 savePreStagingInfo(posId, terminalId, tranType, lineNo, line);
+                totalLine++;
             }
-            
         }
         catch (FileNotFoundException  ex)
         {
@@ -271,6 +318,8 @@ public class DmpParser
                 System.out.println(ex.toString());
             }
         }
+        
+        return totalLine;
     }
     
     private static void staging()
@@ -281,10 +330,8 @@ public class DmpParser
             Connection conn = DriverManager.getConnection(DB_CONN_URL, DB_USER, DB_PASS);
             Statement stmt = conn.createStatement();
             
-            //Get data
             ResultSet rs = stmt.executeQuery("SELECT * FROM `pre_staging` group by terminal_id, pos_id, tran_type, line_no");
             
-            int lineNo = 0;
             int size = 0;
             if(rs != null)
             {
@@ -303,7 +350,6 @@ public class DmpParser
                 strInitArr[i][0] = rs.getString(4);
                 strInitArr[i][1] = rs.getString(5);
                 i++;
-                
             }
             
             displayArray(strInitArr);
@@ -352,7 +398,6 @@ public class DmpParser
             }
             
             processStaging();
-            
         }
         catch (ClassNotFoundException | SQLException ex)
         {
@@ -673,7 +718,6 @@ public class DmpParser
             System.out.println("Case Id: " + pCaseId + " request is sent");
             saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo);
         }
-        
     }
     
     private static void updateFineInfoReversal(String pAmount, String pCaseId, String rrnNo)
@@ -735,6 +779,33 @@ public class DmpParser
         catch (ClassNotFoundException | SQLException ex)
         {
             saveErrorLog("Save Transaction Log", ex.toString());
+            System.out.println(ex.toString());
+        }
+    }
+    
+    private static void updateRegister(int status, int totalLine, long registerId)
+    {
+        try
+        {
+            Class.forName("com.mysql.jdbc.Driver");
+            try (Connection conn = DriverManager.getConnection(DB_CONN_URL, DB_USER, DB_PASS))
+            {
+                String query = "update file_register set STATUS = ?, total_line = ?, updated_at = ? where id = ?";
+                PreparedStatement preparedStmt = conn.prepareStatement(query);
+                preparedStmt.setInt(1, status);
+                preparedStmt.setInt(2, totalLine);
+                
+                Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+                preparedStmt.setTimestamp(3, timestamp);
+                
+                preparedStmt.setLong(4, registerId);
+                
+                preparedStmt.execute();
+            }
+        }
+        catch (ClassNotFoundException | SQLException ex)
+        {
+            saveErrorLog("Update Register", ex.toString());
             System.out.println(ex.toString());
         }
     }
