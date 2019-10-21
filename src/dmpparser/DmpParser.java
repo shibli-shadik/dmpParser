@@ -319,6 +319,7 @@ public class DmpParser
             String caseId = "";
             String tranType = "";
             String statusCode = "";
+            String rrnNo = "";
             
             for (int j = 0; j < strInitArr.length;)
             {
@@ -338,8 +339,9 @@ public class DmpParser
                     caseId = splitLine1[5];
                     tranType = splitLine1[0].substring(splitLine1[0].length() - 1, splitLine1[0].length());
                     statusCode = splitLine2[5];
+                    rrnNo = splitLine2[4];
                     
-                    saveStagingInfo(posId, terminalId, date, tranType, amount, caseId, statusCode);
+                    saveStagingInfo(posId, terminalId, date, tranType, amount, caseId, statusCode, rrnNo);
                     
                     j+=2;
                 }
@@ -490,7 +492,8 @@ public class DmpParser
         System.out.println("-------------------------------------");
     }
     
-    private static void saveStagingInfo(String posId, String terminalId, String createdAt, String tranType, String amount, String caseId, String status)
+    private static void saveStagingInfo(String posId, String terminalId, String createdAt, String tranType, 
+            String amount, String caseId, String status, String rrnNo)
     {
         try
         {
@@ -499,8 +502,8 @@ public class DmpParser
             try (Connection conn = DriverManager.getConnection(DB_CONN_URL, DB_USER, DB_PASS))
             {
                 //Insert data
-                String query = " insert into staging (pos_id, terminal_id, created_at, tran_type, amount, case_id, status)"
-                        + " values (?, ?, ?, ?, ?, ?, ?)";
+                String query = " insert into staging (pos_id, terminal_id, created_at, tran_type, amount, case_id, status, rrn_no)"
+                        + " values (?, ?, ?, ?, ?, ?, ?, ?)";
                 PreparedStatement preparedStmt = conn.prepareStatement(query);
                 preparedStmt.setString(1, posId);
                 preparedStmt.setString(2, terminalId);
@@ -509,6 +512,7 @@ public class DmpParser
                 preparedStmt.setString(5, amount);
                 preparedStmt.setString(6, caseId);
                 preparedStmt.setString(7, status);
+                preparedStmt.setString(8, rrnNo);
                 preparedStmt.execute();
             }
         }
@@ -532,7 +536,7 @@ public class DmpParser
             while(rs.next())
             {
                 System.out.println(rs.getString(4) + "  " + rs.getString(5) + "  " + rs.getString(6));
-                parseData(rs.getString(4), rs.getString(5), rs.getString(6));
+                parseData(rs.getString(4), rs.getString(5), rs.getString(6), rs.getString(8));
             }
             
             String delSql = "delete from staging";
@@ -547,7 +551,7 @@ public class DmpParser
         }
     }
     
-    private static void parseData(String tranType, String pAmount, String pCaseId)
+    private static void parseData(String tranType, String pAmount, String pCaseId, String rrnNo)
     {
         //System.out.println("amount: "+pAmount + " caseId: "+pCaseId);
         
@@ -567,21 +571,22 @@ public class DmpParser
         //System.out.println(s1);
         
         String caseId = s1.substring(3, v2 + 3);
+        caseId = caseId.substring(2, caseId.length());
         //System.out.println(caseId);
         
         if("F".equals(tranType))
         {
-            updateFineInfo(amount, caseId);
+            updateFineInfo(amount, caseId, rrnNo);
         }
         else if("R".equals(tranType))
         {
-            updateFineInfoReversal(amount, caseId);
+            updateFineInfoReversal(amount, caseId, rrnNo);
         }
         
         //payFine(amount, caseId);
     }
     
-    private static void updateFineInfo(String pAmount, String pCaseId)
+    private static void updateFineInfo(String pAmount, String pCaseId, String rrnNo)
     {
         URL url;
         HttpURLConnection connection = null;
@@ -666,17 +671,17 @@ public class DmpParser
         if(response != null)
         {
             System.out.println("Case Id: " + pCaseId + " request is sent");
-            saveTransactionLog(pCaseId, pAmount, response.toString());
+            saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo);
         }
         
     }
     
-    private static void updateFineInfoReversal(String pAmount, String pCaseId)
+    private static void updateFineInfoReversal(String pAmount, String pCaseId, String rrnNo)
     {
         System.out.println(pAmount + " " + pCaseId);
     }
     
-    private static void saveTransactionLog(String pCaseId, String pAmount, String pRequest)
+    private static void saveTransactionLog(String pCaseId, String pAmount, String pRequest, String rrnNo)
     {
         String status = "";
         
@@ -713,13 +718,17 @@ public class DmpParser
             Class.forName("com.mysql.jdbc.Driver");
             try (Connection conn = DriverManager.getConnection(DB_CONN_URL, DB_USER, DB_PASS))
             {
-                String query = "insert into transactions (case_id, amount, status, created_at)"
-                        + " values (?, ?, ?, ?)";
+                String query = "insert into transactions (case_id, amount, status, created_at, rrn_no)"
+                        + " values (?, ?, ?, ?, ?)";
                 PreparedStatement preparedStmt = conn.prepareStatement(query);
                 preparedStmt.setString(1, pCaseId);
                 preparedStmt.setString(2, pAmount);
                 preparedStmt.setString(3, status);
-                preparedStmt.setString(4, new java.util.Date().toString());
+                
+                Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+                preparedStmt.setTimestamp(4, timestamp);
+                
+                preparedStmt.setString(5, rrnNo);
                 preparedStmt.execute();
             }
         }
