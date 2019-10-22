@@ -34,6 +34,9 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
+import org.json.simple.JSONObject;  
+import org.json.simple.JSONValue;
+
 public class DmpParser
 {
     private static String SRC_FOLDER = null;
@@ -42,15 +45,30 @@ public class DmpParser
     private static String DB_CONN_URL = null;
     private static String DB_USER = null;
     private static String DB_PASS = null;
-    private static String API_URL = null;
+    private static String PAYMENT_API_URL = null;
+    private static String REVERSAL_API_URL = null;
     
     public static void main(String[] args)
     {
+        //parseJson();
         readConfigFile();
-        //readFiles();
+        readFiles();
         
         //Read from file_register table 
-        readNewFiles();
+        //readNewFiles();
+    }
+    
+    private static void parseJson()
+    {
+        //https://www.javatpoint.com/java-json-example
+        String s = "{\"name\":\"sonoo\",\"salary\":600000.0,\"age\":27}";
+        Object obj = JSONValue.parse(s);
+        JSONObject jsonObject = (JSONObject) obj;
+        
+        String name = (String) jsonObject.get("name");
+        double salary = (Double) jsonObject.get("salary");
+        long age = (Long) jsonObject.get("age");
+        System.out.println(name+" "+salary+" "+age);  
     }
     
     private static void readConfigFile()
@@ -63,7 +81,7 @@ public class DmpParser
             String absPath = new File(DmpParser.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getPath();
             
             String line = null;
-            //reader = new BufferedReader(new FileReader(absPath.substring(0, absPath.length() - "dmpapp.jar".length())+ "/config.txt"));
+            //reader = new BufferedReader(new FileReader(absPath.substring(0, absPath.length() - "dmpParser.jar".length())+ "/config.txt"));
             reader = new BufferedReader(new FileReader("F:\\projects\\dmp\\config.txt"));
             
             while((line = reader.readLine()) != null)
@@ -94,9 +112,13 @@ public class DmpParser
                 {
                     DB_PASS = splitLine[1];
                 }
-                else if("API_URL".equals(splitLine[0]))
+                else if("PAYMENT_API_URL".equals(splitLine[0]))
                 {
-                    API_URL = splitLine[1];
+                    PAYMENT_API_URL = splitLine[1];
+                }
+                else if("REVERSAL_API_URL".equals(splitLine[0]))
+                {
+                    REVERSAL_API_URL = splitLine[1];
                 }
             }
             
@@ -358,7 +380,7 @@ public class DmpParser
             conn.close();
             
             //Remove unnecessary rows
-            String date = "";
+            String paymentDate = "";
             String amount = "";
             String posId = "";
             String terminalId = "";
@@ -378,7 +400,7 @@ public class DmpParser
                     String[] splitLine1 = strInitArr[j][1].split("\\|");
                     String[] splitLine2 = strInitArr[j+1][1].split("\\|");
                     
-                    date = splitLine1[0].substring(0, splitLine1[0].length() - 3);
+                    paymentDate = splitLine1[0].substring(0, splitLine1[0].length() - 3);
                     amount = splitLine1[2];
                     posId = splitLine1[3];
                     terminalId = splitLine1[4];
@@ -387,7 +409,7 @@ public class DmpParser
                     statusCode = splitLine2[5];
                     rrnNo = splitLine2[4];
                     
-                    saveStagingInfo(posId, terminalId, date, tranType, amount, caseId, statusCode, rrnNo);
+                    saveStagingInfo(posId, terminalId, paymentDate, tranType, amount, caseId, statusCode, rrnNo);
                     
                     j+=2;
                 }
@@ -537,7 +559,7 @@ public class DmpParser
         System.out.println("-------------------------------------");
     }
     
-    private static void saveStagingInfo(String posId, String terminalId, String createdAt, String tranType, 
+    private static void saveStagingInfo(String posId, String terminalId, String paymentDate, String tranType, 
             String amount, String caseId, String status, String rrnNo)
     {
         try
@@ -547,12 +569,12 @@ public class DmpParser
             try (Connection conn = DriverManager.getConnection(DB_CONN_URL, DB_USER, DB_PASS))
             {
                 //Insert data
-                String query = " insert into staging (pos_id, terminal_id, created_at, tran_type, amount, case_id, status, rrn_no)"
+                String query = " insert into staging (pos_id, terminal_id, payment_date, tran_type, amount, case_id, status, rrn_no)"
                         + " values (?, ?, ?, ?, ?, ?, ?, ?)";
                 PreparedStatement preparedStmt = conn.prepareStatement(query);
                 preparedStmt.setString(1, posId);
                 preparedStmt.setString(2, terminalId);
-                preparedStmt.setString(3, createdAt);
+                preparedStmt.setString(3, paymentDate);
                 preparedStmt.setString(4, tranType);
                 preparedStmt.setString(5, amount);
                 preparedStmt.setString(6, caseId);
@@ -581,7 +603,7 @@ public class DmpParser
             while(rs.next())
             {
                 //System.out.println(rs.getString(4) + "  " + rs.getString(5) + "  " + rs.getString(6));
-                parseData(rs.getString(4), rs.getString(5), rs.getString(6), rs.getString(8));
+                parseData(rs.getString(4), rs.getString(5), rs.getString(6), rs.getString(8), rs.getString(2), rs.getString(3));
             }
             
             String delSql = "delete from staging";
@@ -596,7 +618,7 @@ public class DmpParser
         }
     }
     
-    private static void parseData(String tranType, String pAmount, String pCaseId, String rrnNo)
+    private static void parseData(String pTranType, String pAmount, String pCaseId, String pRrnNo, String pTerminalId, String pPaymentDate)
     {
         //System.out.println("amount: "+pAmount + " caseId: "+pCaseId);
         
@@ -619,42 +641,47 @@ public class DmpParser
         caseId = caseId.substring(2, caseId.length());
         //System.out.println(caseId);
         
-        if("F".equals(tranType))
-        {
-            updateFineInfo(amount, caseId, rrnNo);
-        }
-        else if("R".equals(tranType))
-        {
-            updateFineInfoReversal(amount, caseId, rrnNo);
-        }
+        String[] strPaymentDate = pPaymentDate.split(" ");
+        String[] strDate = strPaymentDate[0].split("/");
+        String paymentDate = strDate[2] + "-" + strDate[0] + "-" + strDate[1] + " " + strPaymentDate[1] + " " + strPaymentDate[2];
+        //String paymentDate = strDate[2] + "-" + strDate[0] + "-" + strDate[1] + " " + strPaymentDate[1];
         
-        //payFine(amount, caseId);
+        
+        if("F".equals(pTranType))
+        {
+            updateFineInfo(amount, caseId, pRrnNo, pTerminalId, paymentDate);
+        }
+        else if("R".equals(pTranType))
+        {
+            updateFineInfoReversal(amount, caseId, pRrnNo, pTerminalId, paymentDate);
+        }
     }
     
-    private static void updateFineInfo(String pAmount, String pCaseId, String rrnNo)
+    private static void updateFineInfo(String pAmount, String pCaseId, String rrnNo, String terminalId, String paymentDate)
     {
         URL url;
         HttpURLConnection connection = null;
         StringBuilder response = null;
         
-        String reqStr = "<?xml version=\"1.0\" encoding=\"utf-8\"?> "
-                + "<soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
-                + "xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" "
-                + "xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+        String reqStr =
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+                + "<soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">"
                 + "<soap:Body>"
-                + "<PayFineByCard xmlns=\"http://dmpsoap.com\">"
-                + "<key>*7495#</key>"
-                + "<channel>8</channel>"
-                + "<case_id>" + pCaseId + "</case_id>"
-                + "<amount>" + pAmount + "</amount>"
-                + "</PayFineByCard>"
+                + "<DoCardPayment xmlns=\"http://tempuri.org/\">"
+                + "<CaseId>" + pCaseId + "</CaseId>"
+                + "<Amount>" + pAmount + "</Amount>"
+                + "<PaymentDate>" + paymentDate + "</PaymentDate>"
+                + "<TerminalId>" + terminalId + "</TerminalId>"
+                + "<username>ucash_card</username>"
+                + "<channelKey>A!23$56-8#z</channelKey>"
+                + "</DoCardPayment>"
                 + "</soap:Body>"
                 + "</soap:Envelope>";
         
         try
         {
             //Create connection
-            url = new URL(API_URL);
+            url = new URL(PAYMENT_API_URL);
             connection = (HttpURLConnection)url.openConnection();
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "text/xml; charset=utf-8");
@@ -663,13 +690,12 @@ public class DmpParser
                     Integer.toString(reqStr.getBytes().length));
             connection.setRequestProperty("Content-Language", "en-US");
             
-            connection.setUseCaches (false);
+            connection.setUseCaches(false);
             connection.setDoInput(true);
             connection.setDoOutput(true);
             
             //Send request
-            DataOutputStream wr = new DataOutputStream (
-                    connection.getOutputStream ());
+            DataOutputStream wr = new DataOutputStream(connection.getOutputStream());
             wr.writeBytes (reqStr);
             wr.flush ();
             wr.close ();
@@ -716,18 +742,106 @@ public class DmpParser
         if(response != null)
         {
             System.out.println("Case Id: " + pCaseId + " request is sent");
-            saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo);
+            saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo, terminalId, "F");
         }
     }
     
-    private static void updateFineInfoReversal(String pAmount, String pCaseId, String rrnNo)
+    private static void updateFineInfoReversal(String pAmount, String pCaseId, String rrnNo, String terminalId, String reversalTime)
     {
-        System.out.println(pAmount + " " + pCaseId);
+        URL url;
+        HttpURLConnection connection = null;
+        StringBuilder response = null;
+        
+        String reqStr = "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+                + "<soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+                + "<soap:Body>"
+                + "<DoCardPaymentReversal xmlns=\"http://tempuri.org/\">"
+                + "<CaseId>" + pCaseId + "</CaseId>"
+                + "<Amount>" + pAmount + "</Amount>"
+                + "<RRN>" + rrnNo + "</RRN>"
+                + "<ReversalTime>" + reversalTime + "</ReversalTime>"
+                + "<TerminalId>" + terminalId + "</TerminalId>"
+                + "<username>ucash_card</username>"
+                + "<channelKey>A!23$56-8#z</channelKey>"
+                + "</DoCardPaymentReversal>"
+                + "</soap:Body>"
+                + "</soap:Envelope>";
+
+        try
+        {
+            //Create connection
+            url = new URL(REVERSAL_API_URL);
+            connection = (HttpURLConnection)url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "text/xml; charset=utf-8");
+            
+            connection.setRequestProperty("Content-Length", "" +
+                    Integer.toString(reqStr.getBytes().length));
+            connection.setRequestProperty("Content-Language", "en-US");
+            
+            connection.setUseCaches(false);
+            connection.setDoInput(true);
+            connection.setDoOutput(true);
+            
+            //Send request
+            DataOutputStream wr = new DataOutputStream(connection.getOutputStream());
+            wr.writeBytes (reqStr);
+            wr.flush ();
+            wr.close ();
+            
+            //Get Response
+            InputStream is = null;
+            
+            try
+            {
+                is = connection.getInputStream();
+            }
+            catch(IOException exception)
+            {
+                //if something wrong instead of the output, read the error
+                is = connection.getErrorStream();
+            }
+            
+            BufferedReader rd = new BufferedReader(new InputStreamReader(is));
+            String line;
+            
+            response = new StringBuilder();
+            
+            while((line = rd.readLine()) != null)
+            {
+                response.append(line);
+                response.append('\r');
+            }
+            rd.close();
+            connection.disconnect();
+        }
+        catch (IOException ex)
+        {
+            saveErrorLog("Update Fine Info Reversal", ex.toString());
+            System.out.println(ex.toString());
+        }
+        finally
+        {
+            if(connection != null)
+            {
+                connection.disconnect();
+            }
+        }
+        
+        if(response != null)
+        {
+            System.out.println("Case Id: " + pCaseId + " request is sent");
+            saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo, terminalId, "R");
+        }
     }
     
-    private static void saveTransactionLog(String pCaseId, String pAmount, String pRequest, String rrnNo)
+    private static void saveTransactionLog(String pCaseId, String pAmount, String pRequest, String rrnNo, String terminalId, String tranType)
     {
-        String status = "";
+        String response = "";
+        String messageCode = "";
+        String messageResponse = "";
+        Object obj = null;
+        JSONObject jsonObject = null;
         
         try
         {
@@ -740,16 +854,44 @@ public class DmpParser
             Document doc = dBuilder.parse(is);
             doc.getDocumentElement().normalize();
             
-            NodeList nList = doc.getElementsByTagName("PayFineByCardResponse");
-            
-            Node nNode = nList.item(0);
-            
-            if (nNode.getNodeType() == Node.ELEMENT_NODE) {
+            if("F".equals(tranType))
+            {
+                NodeList nList = doc.getElementsByTagName("DoCardPaymentResponse");
                 
-                Element eElement = (Element) nNode;
+                Node nNode = nList.item(0);
                 
-                status = eElement.getElementsByTagName("PayFineByCardResult").item(0).getTextContent();
+                if (nNode.getNodeType() == Node.ELEMENT_NODE)
+                {
+                    Element eElement = (Element) nNode;
+                    
+                    response = eElement.getElementsByTagName("DoCardPaymentResult").item(0).getTextContent();
+                    
+                    obj = JSONValue.parse(response.substring(1, response.length() - 1));
+                    jsonObject = (JSONObject) obj;
+                    
+                    messageCode = (String) jsonObject.get("MessageCode");
+                    messageResponse = (String) jsonObject.get("MessageResponse");
+                }
             }
+            else if("R".equals(tranType))
+            {
+                NodeList nList = doc.getElementsByTagName("DoCardPaymentReversalResponse");
+                
+                Node nNode = nList.item(0);
+                
+                if (nNode.getNodeType() == Node.ELEMENT_NODE)
+                {
+                    Element eElement = (Element) nNode;
+                    
+                    response = eElement.getElementsByTagName("DoCardPaymentReversalResult").item(0).getTextContent();
+                    
+                    obj = JSONValue.parse(response.substring(1, response.length() - 1));
+                    jsonObject = (JSONObject) obj;
+                    
+                    messageCode = (String) jsonObject.get("MessageCode");
+                    messageResponse = (String) jsonObject.get("MessageResponse");
+                }
+            }            
         }
         catch (IOException | ParserConfigurationException | DOMException | SAXException ex)
         {
@@ -762,17 +904,20 @@ public class DmpParser
             Class.forName("com.mysql.jdbc.Driver");
             try (Connection conn = DriverManager.getConnection(DB_CONN_URL, DB_USER, DB_PASS))
             {
-                String query = "insert into transactions (case_id, amount, status, created_at, rrn_no)"
-                        + " values (?, ?, ?, ?, ?)";
+                String query = "insert into transactions (case_id, amount, created_at, rrn_no, terminal_Id, message_code, message_response, tran_type)"
+                        + " values (?, ?, ?, ?, ?, ?, ?, ?)";
                 PreparedStatement preparedStmt = conn.prepareStatement(query);
                 preparedStmt.setString(1, pCaseId);
                 preparedStmt.setString(2, pAmount);
-                preparedStmt.setString(3, status);
-                
+                                
                 Timestamp timestamp = new Timestamp(System.currentTimeMillis());
-                preparedStmt.setTimestamp(4, timestamp);
+                preparedStmt.setTimestamp(3, timestamp);
                 
-                preparedStmt.setString(5, rrnNo);
+                preparedStmt.setString(4, rrnNo);
+                preparedStmt.setString(5, terminalId);
+                preparedStmt.setString(6, messageCode);
+                preparedStmt.setString(7, messageResponse);
+                preparedStmt.setString(8, tranType);
                 preparedStmt.execute();
             }
         }
