@@ -34,7 +34,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
-import org.json.simple.JSONObject;  
+import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 public class DmpParser
@@ -52,10 +52,10 @@ public class DmpParser
     {
         //parseJson();
         readConfigFile();
-        readFiles();
+        //readFiles();
         
-        //Read from file_register table 
-        //readNewFiles();
+        //Read from file_register table
+        readNewFiles();
     }
     
     private static void parseJson()
@@ -68,7 +68,7 @@ public class DmpParser
         String name = (String) jsonObject.get("name");
         double salary = (Double) jsonObject.get("salary");
         long age = (Long) jsonObject.get("age");
-        System.out.println(name+" "+salary+" "+age);  
+        System.out.println(name+" "+salary+" "+age);
     }
     
     private static void readConfigFile()
@@ -186,7 +186,7 @@ public class DmpParser
             Statement stmt = conn.createStatement();
             
             ResultSet rs = stmt.executeQuery("SELECT * FROM `file_register` WHERE status = 0");
-                
+            
             boolean flag = false;
             String fileName = "";
             String registerId = "";
@@ -197,17 +197,21 @@ public class DmpParser
                 //System.out.println(rs.getString(1) + "  " + rs.getString(2));
                 registerId = rs.getString(1);
                 fileName = rs.getString(2);
+                //flag = checkFile(SRC_FOLDER + "/" + fileName);
                 flag = checkFile(SRC_FOLDER + "\\" + fileName);
                 
                 if(flag == true)
                 {
+                    //totalLine = preStaging(SRC_FOLDER + "/" + fileName); //1
                     totalLine = preStaging(SRC_FOLDER + "\\" + fileName); //1
                     staging(); //2
+                    //moveFile(SRC_FOLDER + "/" + fileName, DEST_FOLDER + "/" + fileName);//3
                     moveFile(SRC_FOLDER + "\\" + fileName, DEST_FOLDER + "\\" + fileName);//3
                     updateRegister(FileStatus.PROCESSED.ordinal(), totalLine, Long.parseLong(registerId));//4
                 }
                 else //Move file error folder
                 {
+                    //moveFile(SRC_FOLDER + "/" + fileName, ERR_FOLDER + "/" + fileName);
                     moveFile(SRC_FOLDER + "\\" + fileName, ERR_FOLDER + "\\" + fileName);
                     updateRegister(FileStatus.REJECTED.ordinal(), totalLine, Long.parseLong(registerId));
                 }
@@ -243,9 +247,9 @@ public class DmpParser
                         break;
                     }
                 }
-                if("2".equals(splitLine[1]))
+                else if("2".equals(splitLine[1]))
                 {
-                    if(splitLine.length != 8)
+                    if(splitLine.length < 7)
                     {
                         flag = false;
                         break;
@@ -559,7 +563,7 @@ public class DmpParser
         System.out.println("-------------------------------------");
     }
     
-    private static void saveStagingInfo(String posId, String terminalId, String paymentDate, String tranType, 
+    private static void saveStagingInfo(String posId, String terminalId, String paymentDate, String tranType,
             String amount, String caseId, String status, String rrnNo)
     {
         try
@@ -739,10 +743,31 @@ public class DmpParser
             }
         }
         
-        if(response != null)
+        try
         {
-            System.out.println("Case Id: " + pCaseId + " request is sent");
-            saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo, terminalId, "F");
+            if(response != null && !response.toString().contains("Fault"))
+            {
+                System.out.println("Case Id: " + pCaseId + " request is sent");
+                saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo, terminalId, "F");
+            }
+            else
+            {
+                response = new StringBuilder();
+                response.append("<soap:Body>");
+                response.append("<DoCardPaymentResponse xmlns=\"http://tempuri.org/\">");
+                response.append("<DoCardPaymentResult>");
+                response.append("[{\"MessageCode\":\"9010\",\"MessageResponse\":\"Error in API communication\"}]");
+                response.append("</DoCardPaymentResult>");
+                response.append("</DoCardPaymentResponse>");
+                response.append("</soap:Body>");
+                
+                saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo, terminalId, "F");
+            }
+        }
+        catch (Exception ex)
+        {
+            saveErrorLog("Update Fine Info", ex.toString());
+            System.out.println(ex.toString());
         }
     }
     
@@ -766,7 +791,7 @@ public class DmpParser
                 + "</DoCardPaymentReversal>"
                 + "</soap:Body>"
                 + "</soap:Envelope>";
-
+        
         try
         {
             //Create connection
@@ -828,10 +853,32 @@ public class DmpParser
             }
         }
         
-        if(response != null)
+        try
         {
-            System.out.println("Case Id: " + pCaseId + " request is sent");
-            saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo, terminalId, "R");
+            if(response != null && !response.toString().contains("Fault"))
+                
+            {
+                System.out.println("Case Id: " + pCaseId + " request is sent");
+                saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo, terminalId, "R");
+            }
+            else
+            {
+                response = new StringBuilder();
+                response.append("<soap:Body>");
+                response.append("<DoCardPaymentReversalResponse xmlns=\"http://tempuri.org/\">");
+                response.append("<DoCardPaymentReversalResult>");
+                response.append("[{\"MessageCode\":\"9010\",\"MessageResponse\":\"Error in API communication\"}]");
+                response.append("</DoCardPaymentReversalResult>");
+                response.append("</DoCardPaymentReversalResponse>");
+                response.append("</soap:Body>");
+                
+                saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo, terminalId, "R");
+            }
+        }
+        catch (Exception ex)
+        {
+            saveErrorLog("Update Fine Info Reversal", ex.toString());
+            System.out.println(ex.toString());
         }
     }
     
@@ -891,7 +938,7 @@ public class DmpParser
                     messageCode = (String) jsonObject.get("MessageCode");
                     messageResponse = (String) jsonObject.get("MessageResponse");
                 }
-            }            
+            }
         }
         catch (IOException | ParserConfigurationException | DOMException | SAXException ex)
         {
@@ -909,7 +956,7 @@ public class DmpParser
                 PreparedStatement preparedStmt = conn.prepareStatement(query);
                 preparedStmt.setString(1, pCaseId);
                 preparedStmt.setString(2, pAmount);
-                                
+                
                 Timestamp timestamp = new Timestamp(System.currentTimeMillis());
                 preparedStmt.setTimestamp(3, timestamp);
                 
