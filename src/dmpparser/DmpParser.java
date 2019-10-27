@@ -237,22 +237,25 @@ public class DmpParser
             
             while((line = reader.readLine()) != null)
             {
-                splitLine = line.split("\\|");
-                
-                if("1".equals(splitLine[1]))
+                if(!"".equals(line))
                 {
-                    if(splitLine.length != 6)
+                    splitLine = line.split("\\|");
+                    
+                    if("1".equals(splitLine[1]))
                     {
-                        flag = false;
-                        break;
+                        if(splitLine.length != 6)
+                        {
+                            flag = false;
+                            break;
+                        }
                     }
-                }
-                else if("2".equals(splitLine[1]))
-                {
-                    if(splitLine.length < 7)
+                    else if("2".equals(splitLine[1]))
                     {
-                        flag = false;
-                        break;
+                        if(splitLine.length < 7)
+                        {
+                            flag = false;
+                            break;
+                        }
                     }
                 }
             }
@@ -302,24 +305,27 @@ public class DmpParser
             
             while((line = reader.readLine()) != null)
             {
-                splitLine = line.split("\\|");
-                
-                lineNo = Integer.parseInt(splitLine[1]);
-                posId = splitLine[3];
-                tranType = splitLine[0].substring(splitLine[0].length() - 1, splitLine[0].length());
-                
-                if(lineNo == 1)
+                if(!"".equals(line))
                 {
-                    terminalId = splitLine[4];
+                    splitLine = line.split("\\|");
+                    
+                    lineNo = Integer.parseInt(splitLine[1]);
+                    posId = splitLine[3];
+                    tranType = splitLine[0].substring(splitLine[0].length() - 1, splitLine[0].length());
+                    
+                    if(lineNo == 1)
+                    {
+                        terminalId = splitLine[4];
+                    }
+                    else if(lineNo == 2)
+                    {
+                        terminalId = splitLine[6];
+                    }
+                    
+                    //System.out.println(tranType +" "+lineNo+" "+posId+" "+terminalId + " "+line);
+                    savePreStagingInfo(posId, terminalId, tranType, lineNo, line);
+                    totalLine++;
                 }
-                else if(lineNo == 2)
-                {
-                    terminalId = splitLine[6];
-                }
-                
-                //System.out.println(tranType +" "+lineNo+" "+posId+" "+terminalId + " "+line);
-                savePreStagingInfo(posId, terminalId, tranType, lineNo, line);
-                totalLine++;
             }
         }
         catch (FileNotFoundException  ex)
