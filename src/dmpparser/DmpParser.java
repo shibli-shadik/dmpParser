@@ -21,7 +21,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.util.ArrayList;
 import java.util.List;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -39,6 +38,7 @@ import org.json.simple.JSONValue;
 
 public class DmpParser
 {
+    private static String OS = "W";//"L" : W = Windows, L = Linux
     private static String SRC_FOLDER = null;
     private static String DEST_FOLDER = null;
     private static String ERR_FOLDER = null;
@@ -50,25 +50,11 @@ public class DmpParser
     
     public static void main(String[] args)
     {
-        //parseJson();
         readConfigFile();
         //readFiles();
         
         //Read from file_register table
         readNewFiles();
-    }
-    
-    private static void parseJson()
-    {
-        //https://www.javatpoint.com/java-json-example
-        String s = "{\"name\":\"sonoo\",\"salary\":600000.0,\"age\":27}";
-        Object obj = JSONValue.parse(s);
-        JSONObject jsonObject = (JSONObject) obj;
-        
-        String name = (String) jsonObject.get("name");
-        double salary = (Double) jsonObject.get("salary");
-        long age = (Long) jsonObject.get("age");
-        System.out.println(name+" "+salary+" "+age);
     }
     
     private static void readConfigFile()
@@ -81,8 +67,15 @@ public class DmpParser
             String absPath = new File(DmpParser.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getPath();
             
             String line = null;
-            reader = new BufferedReader(new FileReader(absPath.substring(0, absPath.length() - "dmpParser.jar".length())+ "/config.txt"));
-            //reader = new BufferedReader(new FileReader("F:\\projects\\dmp\\config.txt"));
+            
+            if("L".equals(OS))
+            {
+                reader = new BufferedReader(new FileReader(absPath.substring(0, absPath.length() - "dmpParser.jar".length())+ "/config.txt"));
+            }
+            else
+            {
+                reader = new BufferedReader(new FileReader("F:\\projects\\dmp\\config.txt"));
+            }
             
             while((line = reader.readLine()) != null)
             {
@@ -191,28 +184,35 @@ public class DmpParser
             String fileName = "";
             long registerId = 0;
             int totalLine = 0;
+            String osSlash = "";
+            
+            if("L".equals(OS))
+            {
+                osSlash = "/";
+            }
+            else if("W".equals(OS))
+            {
+                osSlash = "\\";
+            }
             
             while(rs.next())
             {
                 //System.out.println(rs.getString(1) + "  " + rs.getString(2));
                 registerId = Long.parseLong(rs.getString(1));
                 fileName = rs.getString(2);
-                flag = checkFile(SRC_FOLDER + "/" + fileName);
-                //flag = checkFile(SRC_FOLDER + "\\" + fileName);
+                
+                flag = checkFile(SRC_FOLDER + osSlash + fileName);
                 
                 if(flag == true)
                 {
-                    totalLine = preStaging(SRC_FOLDER + "/" + fileName); //1
-                    //totalLine = preStaging(SRC_FOLDER + "\\" + fileName); //1
+                    totalLine = preStaging(SRC_FOLDER + osSlash+ fileName); //1
                     staging(registerId); //2
-                    moveFile(SRC_FOLDER + "/" + fileName, DEST_FOLDER + "/" + fileName);//3
-                    //moveFile(SRC_FOLDER + "\\" + fileName, DEST_FOLDER + "\\" + fileName);//3
+                    moveFile(SRC_FOLDER + osSlash + fileName, DEST_FOLDER + osSlash + fileName);//3
                     updateRegister(FileStatus.PROCESSED.ordinal(), totalLine, registerId);//4
                 }
                 else //Move file error folder
                 {
-                    moveFile(SRC_FOLDER + "/" + fileName, ERR_FOLDER + "/" + fileName);
-                    //moveFile(SRC_FOLDER + "\\" + fileName, ERR_FOLDER + "\\" + fileName);
+                    moveFile(SRC_FOLDER + osSlash + fileName, ERR_FOLDER + osSlash + fileName);
                     updateRegister(FileStatus.REJECTED.ordinal(), totalLine, registerId);
                 }
             }
