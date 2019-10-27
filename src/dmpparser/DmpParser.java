@@ -81,8 +81,8 @@ public class DmpParser
             String absPath = new File(DmpParser.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getPath();
             
             String line = null;
-            //reader = new BufferedReader(new FileReader(absPath.substring(0, absPath.length() - "dmpParser.jar".length())+ "/config.txt"));
-            reader = new BufferedReader(new FileReader("F:\\projects\\dmp\\config.txt"));
+            reader = new BufferedReader(new FileReader(absPath.substring(0, absPath.length() - "dmpParser.jar".length())+ "/config.txt"));
+            //reader = new BufferedReader(new FileReader("F:\\projects\\dmp\\config.txt"));
             
             while((line = reader.readLine()) != null)
             {
@@ -143,7 +143,7 @@ public class DmpParser
         }
     }
     
-    private static void readFiles()
+    /*private static void readFiles()
     {
         final File folder = new File(SRC_FOLDER);
         List<String> result = new ArrayList<>();
@@ -175,7 +175,7 @@ public class DmpParser
             saveErrorLog("Read Files", "There is no file to read");
             System.out.println("There is no file to read");
         }
-    }
+    }*/
     
     private static void readNewFiles()
     {
@@ -189,31 +189,31 @@ public class DmpParser
             
             boolean flag = false;
             String fileName = "";
-            String registerId = "";
+            long registerId = 0;
             int totalLine = 0;
             
             while(rs.next())
             {
                 //System.out.println(rs.getString(1) + "  " + rs.getString(2));
-                registerId = rs.getString(1);
+                registerId = Long.parseLong(rs.getString(1));
                 fileName = rs.getString(2);
-                //flag = checkFile(SRC_FOLDER + "/" + fileName);
-                flag = checkFile(SRC_FOLDER + "\\" + fileName);
+                flag = checkFile(SRC_FOLDER + "/" + fileName);
+                //flag = checkFile(SRC_FOLDER + "\\" + fileName);
                 
                 if(flag == true)
                 {
-                    //totalLine = preStaging(SRC_FOLDER + "/" + fileName); //1
-                    totalLine = preStaging(SRC_FOLDER + "\\" + fileName); //1
-                    staging(); //2
-                    //moveFile(SRC_FOLDER + "/" + fileName, DEST_FOLDER + "/" + fileName);//3
-                    moveFile(SRC_FOLDER + "\\" + fileName, DEST_FOLDER + "\\" + fileName);//3
-                    updateRegister(FileStatus.PROCESSED.ordinal(), totalLine, Long.parseLong(registerId));//4
+                    totalLine = preStaging(SRC_FOLDER + "/" + fileName); //1
+                    //totalLine = preStaging(SRC_FOLDER + "\\" + fileName); //1
+                    staging(registerId); //2
+                    moveFile(SRC_FOLDER + "/" + fileName, DEST_FOLDER + "/" + fileName);//3
+                    //moveFile(SRC_FOLDER + "\\" + fileName, DEST_FOLDER + "\\" + fileName);//3
+                    updateRegister(FileStatus.PROCESSED.ordinal(), totalLine, registerId);//4
                 }
                 else //Move file error folder
                 {
-                    //moveFile(SRC_FOLDER + "/" + fileName, ERR_FOLDER + "/" + fileName);
-                    moveFile(SRC_FOLDER + "\\" + fileName, ERR_FOLDER + "\\" + fileName);
-                    updateRegister(FileStatus.REJECTED.ordinal(), totalLine, Long.parseLong(registerId));
+                    moveFile(SRC_FOLDER + "/" + fileName, ERR_FOLDER + "/" + fileName);
+                    //moveFile(SRC_FOLDER + "\\" + fileName, ERR_FOLDER + "\\" + fileName);
+                    updateRegister(FileStatus.REJECTED.ordinal(), totalLine, registerId);
                 }
             }
         }
@@ -348,7 +348,7 @@ public class DmpParser
         return totalLine;
     }
     
-    private static void staging()
+    private static void staging(long fileId)
     {
         try
         {
@@ -413,7 +413,7 @@ public class DmpParser
                     statusCode = splitLine2[5];
                     rrnNo = splitLine2[4];
                     
-                    saveStagingInfo(posId, terminalId, paymentDate, tranType, amount, caseId, statusCode, rrnNo);
+                    saveStagingInfo(posId, terminalId, paymentDate, tranType, amount, caseId, statusCode, rrnNo, fileId);
                     
                     j+=2;
                 }
@@ -564,7 +564,7 @@ public class DmpParser
     }
     
     private static void saveStagingInfo(String posId, String terminalId, String paymentDate, String tranType,
-            String amount, String caseId, String status, String rrnNo)
+            String amount, String caseId, String status, String rrnNo, long fileId)
     {
         try
         {
@@ -573,8 +573,8 @@ public class DmpParser
             try (Connection conn = DriverManager.getConnection(DB_CONN_URL, DB_USER, DB_PASS))
             {
                 //Insert data
-                String query = " insert into staging (pos_id, terminal_id, payment_date, tran_type, amount, case_id, status, rrn_no)"
-                        + " values (?, ?, ?, ?, ?, ?, ?, ?)";
+                String query = " insert into staging (pos_id, terminal_id, payment_date, tran_type, amount, case_id, status, rrn_no, file_id)"
+                        + " values (?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 PreparedStatement preparedStmt = conn.prepareStatement(query);
                 preparedStmt.setString(1, posId);
                 preparedStmt.setString(2, terminalId);
@@ -584,6 +584,7 @@ public class DmpParser
                 preparedStmt.setString(6, caseId);
                 preparedStmt.setString(7, status);
                 preparedStmt.setString(8, rrnNo);
+                preparedStmt.setLong(9, fileId);
                 preparedStmt.execute();
             }
         }
@@ -607,7 +608,7 @@ public class DmpParser
             while(rs.next())
             {
                 //System.out.println(rs.getString(4) + "  " + rs.getString(5) + "  " + rs.getString(6));
-                parseData(rs.getString(4), rs.getString(5), rs.getString(6), rs.getString(8), rs.getString(2), rs.getString(3));
+                parseData(rs.getString(4), rs.getString(5), rs.getString(6), rs.getString(8), rs.getString(2), rs.getString(3), rs.getString(1), Long.parseLong(rs.getString(9)));
             }
             
             String delSql = "delete from staging";
@@ -622,7 +623,7 @@ public class DmpParser
         }
     }
     
-    private static void parseData(String pTranType, String pAmount, String pCaseId, String pRrnNo, String pTerminalId, String pPaymentDate)
+    private static void parseData(String pTranType, String pAmount, String pCaseId, String pRrnNo, String pTerminalId, String pPaymentDate, String posId, long fileId)
     {
         //System.out.println("amount: "+pAmount + " caseId: "+pCaseId);
         
@@ -653,15 +654,15 @@ public class DmpParser
         
         if("F".equals(pTranType))
         {
-            updateFineInfo(amount, caseId, pRrnNo, pTerminalId, paymentDate);
+            updateFineInfo(amount, caseId, pRrnNo, pTerminalId, paymentDate, posId, fileId);
         }
         else if("R".equals(pTranType))
         {
-            updateFineInfoReversal(amount, caseId, pRrnNo, pTerminalId, paymentDate);
+            updateFineInfoReversal(amount, caseId, pRrnNo, pTerminalId, paymentDate, posId, fileId);
         }
     }
     
-    private static void updateFineInfo(String pAmount, String pCaseId, String rrnNo, String terminalId, String paymentDate)
+    private static void updateFineInfo(String pAmount, String pCaseId, String rrnNo, String terminalId, String paymentDate, String posId, long fileId)
     {
         URL url;
         HttpURLConnection connection = null;
@@ -748,7 +749,7 @@ public class DmpParser
             if(response != null && !response.toString().contains("Fault"))
             {
                 System.out.println("Case Id: " + pCaseId + " request is sent");
-                saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo, terminalId, "F");
+                saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo, terminalId, "F", posId, fileId);
             }
             else
             {
@@ -761,7 +762,7 @@ public class DmpParser
                 response.append("</DoCardPaymentResponse>");
                 response.append("</soap:Body>");
                 
-                saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo, terminalId, "F");
+                saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo, terminalId, "F", posId, fileId);
             }
         }
         catch (Exception ex)
@@ -771,7 +772,7 @@ public class DmpParser
         }
     }
     
-    private static void updateFineInfoReversal(String pAmount, String pCaseId, String rrnNo, String terminalId, String reversalTime)
+    private static void updateFineInfoReversal(String pAmount, String pCaseId, String rrnNo, String terminalId, String reversalTime, String posId, long fileId)
     {
         URL url;
         HttpURLConnection connection = null;
@@ -859,7 +860,7 @@ public class DmpParser
                 
             {
                 System.out.println("Case Id: " + pCaseId + " request is sent");
-                saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo, terminalId, "R");
+                saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo, terminalId, "R", posId, fileId);
             }
             else
             {
@@ -872,7 +873,7 @@ public class DmpParser
                 response.append("</DoCardPaymentReversalResponse>");
                 response.append("</soap:Body>");
                 
-                saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo, terminalId, "R");
+                saveTransactionLog(pCaseId, pAmount, response.toString(), rrnNo, terminalId, "R", posId, fileId);
             }
         }
         catch (Exception ex)
@@ -882,7 +883,7 @@ public class DmpParser
         }
     }
     
-    private static void saveTransactionLog(String pCaseId, String pAmount, String pRequest, String rrnNo, String terminalId, String tranType)
+    private static void saveTransactionLog(String pCaseId, String pAmount, String pRequest, String rrnNo, String terminalId, String tranType, String posId, long fileId)
     {
         String response = "";
         String messageCode = "";
@@ -951,8 +952,8 @@ public class DmpParser
             Class.forName("com.mysql.jdbc.Driver");
             try (Connection conn = DriverManager.getConnection(DB_CONN_URL, DB_USER, DB_PASS))
             {
-                String query = "insert into transactions (case_id, amount, created_at, rrn_no, terminal_Id, message_code, message_response, tran_type)"
-                        + " values (?, ?, ?, ?, ?, ?, ?, ?)";
+                String query = "insert into transactions (case_id, amount, created_at, rrn_no, terminal_Id, message_code, message_response, tran_type, pos_id, file_id)"
+                        + " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 PreparedStatement preparedStmt = conn.prepareStatement(query);
                 preparedStmt.setString(1, pCaseId);
                 preparedStmt.setString(2, pAmount);
@@ -965,6 +966,8 @@ public class DmpParser
                 preparedStmt.setString(6, messageCode);
                 preparedStmt.setString(7, messageResponse);
                 preparedStmt.setString(8, tranType);
+                preparedStmt.setString(9, posId);
+                preparedStmt.setLong(10, fileId);
                 preparedStmt.execute();
             }
         }

@@ -14,7 +14,9 @@ CREATE TABLE `staging` (
  `amount` varchar(50) NOT NULL,
  `case_id` varchar(100) NOT NULL,
  `status` varchar(5) NOT NULL,
- `rrn_no` varchar(50) NOT NULL   
+ `rrn_no` varchar(50) NOT NULL,
+ `file_id` bigint(20) NOT NULL,
+ FOREIGN KEY (file_id) REFERENCES file_register(id)   
 )
 
 CREATE TABLE `transactions` (
@@ -23,9 +25,12 @@ CREATE TABLE `transactions` (
  `amount` varchar(50) NOT NULL,
  `case_id` varchar(50) NOT NULL,
  `rrn_no` varchar(50) NOT NULL,
+ `pos_id` varchar(50) NOT NULL,
  `terminal_Id` varchar(50) NOT NULL,
  `message_code` varchar(20) NOT NULL,
  `message_response` varchar(500) NOT NULL,
  `tran_type` varchar(5) NOT NULL,
- PRIMARY KEY (`id`)
+ `file_id` bigint(20) NOT NULL,
+ PRIMARY KEY (`id`),
+ FOREIGN KEY (file_id) REFERENCES file_register(id)
 ) 
