@@ -22,6 +22,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -50,11 +53,35 @@ public class DmpParser
     
     public static void main(String[] args)
     {
-        readConfigFile();
-        //readFiles();
+        //testLog();
         
-        //Read from file_register table
+        readConfigFile();
         readNewFiles();
+    }
+    
+    private static void testLog()
+    {
+        Logger logger = Logger.getLogger("MyLog");
+        FileHandler fh;
+        
+        try {
+            
+            // This block configure the logger with handler and formatter
+            fh = new FileHandler("F:\\projects\\dmp\\MyLogFile.log");
+            logger.addHandler(fh);
+            SimpleFormatter formatter = new SimpleFormatter();
+            fh.setFormatter(formatter);
+            
+            // the following statement is used to log any messages
+            logger.info("My first log");
+            
+        } catch (SecurityException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        
+        logger.info("Hi How r u?");
     }
     
     private static void readConfigFile()
