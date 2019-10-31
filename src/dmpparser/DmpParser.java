@@ -22,12 +22,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.List;
-import java.util.logging.FileHandler;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
+import org.apache.log4j.RollingFileAppender;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -35,7 +37,6 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
-
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
@@ -50,38 +51,45 @@ public class DmpParser
     private static String DB_PASS = null;
     private static String PAYMENT_API_URL = null;
     private static String REVERSAL_API_URL = null;
+    private static final Logger LOGGER = Logger.getLogger(DmpParser.class);
     
     public static void main(String[] args)
     {
-        //testLog();
+        createLog();
+        LOGGER.info("Parser execution started");
         
         readConfigFile();
         readNewFiles();
+        
+        LOGGER.info("Parser execution completed");
     }
     
-    private static void testLog()
+    private static void createLog()
     {
-        Logger logger = Logger.getLogger("MyLog");
-        FileHandler fh;
+        // creates pattern layout
+        PatternLayout layout = new PatternLayout();
+        String conversionPattern = "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%t] %c %x - %m%n";
+        layout.setConversionPattern(conversionPattern);
         
-        try {
-            
-            // This block configure the logger with handler and formatter
-            fh = new FileHandler("F:\\projects\\dmp\\MyLogFile.log");
-            logger.addHandler(fh);
-            SimpleFormatter formatter = new SimpleFormatter();
-            fh.setFormatter(formatter);
-            
-            // the following statement is used to log any messages
-            logger.info("My first log");
-            
-        } catch (SecurityException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        // creates daily rolling file appender
+        RollingFileAppender rollingAppender = new RollingFileAppender();
+        rollingAppender.setFile("./logs/app.log");
+        rollingAppender.setLayout(layout);
+        rollingAppender.activateOptions();
+        rollingAppender.setMaxFileSize("10MB");
+        rollingAppender.setMaxBackupIndex(2);
         
-        logger.info("Hi How r u?");
+        // creates console appender
+        //ConsoleAppender consoleAppender = new ConsoleAppender();
+        //consoleAppender.setLayout(layout);
+        //consoleAppender.activateOptions();
+        
+        // configures the root logger
+        Logger rootLogger = Logger.getRootLogger();
+        rootLogger.setLevel(Level.DEBUG);
+        rootLogger.addAppender(rollingAppender);
+        //rootLogger.addAppender(consoleAppender);
+        
     }
     
     private static void readConfigFile()
@@ -165,36 +173,36 @@ public class DmpParser
     
     /*private static void readFiles()
     {
-        final File folder = new File(SRC_FOLDER);
-        List<String> result = new ArrayList<>();
-        
-        search(".*\\.txt", folder, result);
-        
-        if(result.size() > 0)
-        {
-            boolean flag = false;
-            for (String s : result)
-            {
-                //System.out.println(s);
-                flag = checkFile(SRC_FOLDER + "\\" + s);
-                
-                if(flag == true)
-                {
-                    preStaging(SRC_FOLDER + "\\" + s); //1
-                    staging(); //2
-                    moveFile(SRC_FOLDER + "\\" + s, DEST_FOLDER + "\\" + s);//3
-                }
-                else //Move file error folder
-                {
-                    moveFile(SRC_FOLDER + "\\" + s, ERR_FOLDER + "\\" + s);
-                }
-            }
-        }
-        else
-        {
-            saveErrorLog("Read Files", "There is no file to read");
-            System.out.println("There is no file to read");
-        }
+    final File folder = new File(SRC_FOLDER);
+    List<String> result = new ArrayList<>();
+    
+    search(".*\\.txt", folder, result);
+    
+    if(result.size() > 0)
+    {
+    boolean flag = false;
+    for (String s : result)
+    {
+    //System.out.println(s);
+    flag = checkFile(SRC_FOLDER + "\\" + s);
+    
+    if(flag == true)
+    {
+    preStaging(SRC_FOLDER + "\\" + s); //1
+    staging(); //2
+    moveFile(SRC_FOLDER + "\\" + s, DEST_FOLDER + "\\" + s);//3
+    }
+    else //Move file error folder
+    {
+    moveFile(SRC_FOLDER + "\\" + s, ERR_FOLDER + "\\" + s);
+    }
+    }
+    }
+    else
+    {
+    saveErrorLog("Read Files", "There is no file to read");
+    System.out.println("There is no file to read");
+    }
     }*/
     
     private static void readNewFiles()
@@ -1036,5 +1044,105 @@ public class DmpParser
             saveErrorLog("Update Register", ex.toString());
             System.out.println(ex.toString());
         }
+    }
+    
+    private static void testLog()
+    {
+        // creates pattern layout
+        PatternLayout layout = new PatternLayout();
+        String conversionPattern = "%-7p %d [%t] %c %x - %m%n";
+        layout.setConversionPattern(conversionPattern);
+        
+        // creates daily rolling file appender
+        RollingFileAppender rollingAppender = new RollingFileAppender();
+        rollingAppender.setFile("./logs/app.log");
+        
+        //rollingAppender.setDatePattern("'.'yyyy-MM-dd-HH-mm");
+        rollingAppender.setLayout(layout);
+        rollingAppender.activateOptions();
+        rollingAppender.setMaxFileSize("10MB");
+        rollingAppender.setMaxBackupIndex(2);
+        
+        
+        // configures the root logger
+        Logger rootLogger = Logger.getRootLogger();
+        rootLogger.setLevel(Level.DEBUG);
+        rootLogger.addAppender(rollingAppender);
+        
+        // creates a custom logger and log messages
+        Logger logger = Logger.getLogger(DmpParser.class);
+        
+        logger.debug("this is a debug log message");
+        logger.info("this is a information log message");
+        logger.warn("this is a warning log message");
+        /*
+        File logDir = new File("./logs/");
+        if( !(logDir.exists()) )
+        logDir.mkdir();
+        
+        //https://www.codejava.net/coding/how-to-configure-log4j-as-logging-mechanism-in-java
+        // creates pattern layout
+        PatternLayout layout = new PatternLayout();
+        String conversionPattern = "%-7p %d [%t] %c %x - %m%n";
+        layout.setConversionPattern(conversionPattern);
+        
+        // creates console appender
+        ConsoleAppender consoleAppender = new ConsoleAppender();
+        consoleAppender.setLayout(layout);
+        consoleAppender.activateOptions();
+        
+        // creates file appender
+        FileAppender fileAppender = new FileAppender();
+        fileAppender.setFile("./logs/applog3.txt");
+        fileAppender.setLayout(layout);
+        fileAppender.activateOptions();
+        
+        // configures the root logger
+        Logger rootLogger = Logger.getRootLogger();
+        rootLogger.setLevel(Level.DEBUG);
+        rootLogger.addAppender(consoleAppender);
+        rootLogger.addAppender(fileAppender);
+        
+        Logger logger = Logger.getLogger(DmpParser.class);
+        logger.debug("this is a debug log message");
+        logger.info("this is a information log message");
+        logger.warn("this is a warning log message");
+        */
+        //logger.severe("severe message");
+        //logger.warning("warning message");
+        //logger.info("info message");
+        //logger.config("config message");
+        //logger.fine("fine message");
+        //logger.finer("finer message");
+        //logger.finest("finest message");
+        
+        /*
+        File logDir = new File("./logs/");
+        if( !(logDir.exists()) )
+        logDir.mkdir();
+        
+        Logger logger = Logger.getLogger(DmpParser.class.getName());
+        FileHandler fh;
+        boolean append = true;
+        try {
+        
+        // This block configure the logger with handler and formatter
+        fh = new FileHandler("F:\\projects\\dmp\\MyLogFile.log", append);
+        logger.addHandler(fh);
+        SimpleFormatter formatter = new SimpleFormatter();
+        fh.setFormatter(formatter);
+        
+        // the following statement is used to log any messages
+        logger.info("My first log");
+        logger.warning("My first log");
+        
+        } catch (SecurityException e) {
+        e.printStackTrace();
+        } catch (IOException e) {
+        e.printStackTrace();
+        }
+        
+        logger.info("Hi How r u?");
+        */
     }
 }
