@@ -464,6 +464,7 @@ public class DmpParser
                     rrnNo = splitLine2[4];
                     
                     saveStagingInfo(posId, terminalId, paymentDate, tranType, amount, caseId, statusCode, rrnNo, fileId);
+                    saveRejectedInfo(posId, terminalId, paymentDate, tranType, amount, caseId, statusCode, rrnNo, fileId);
                     
                     j+=2;
                 }
@@ -647,6 +648,53 @@ public class DmpParser
             LOGGER.error("Save Staging Info# " + ex.toString());
             saveErrorLog("Save Staging Info", ex.toString());
             System.out.println(ex.toString());
+        }
+    }
+    
+    private static void saveRejectedInfo(String posId, String terminalId, String paymentDate, String tranType,
+            String pAmount, String pCaseId, String status, String rrnNo, long fileId)
+    {
+        if(!"00".equals(status))
+        {
+            pAmount = pAmount.replaceFirst("^0+(?!$)", "");
+            String wholeAmt = pAmount.substring(0, pAmount.length() - 2);
+            String fracAmt = pAmount.substring(pAmount.length()-2, pAmount.length());
+            String amount = wholeAmt + "." + fracAmt;
+            
+            int v1 = Integer.parseInt(pCaseId.substring(0, 3));
+            int v2 = Integer.parseInt(pCaseId.substring(3 + v1, 3 + v1 + 3));
+            String s1 = pCaseId.substring(3 + v1, pCaseId.length());
+            String caseId = s1.substring(3, v2 + 3);
+            caseId = caseId.substring(2, caseId.length());
+        
+            try
+            {
+                Class.forName("com.mysql.jdbc.Driver");
+                //Insert data
+                try (Connection conn = DriverManager.getConnection(DB_CONN_URL, DB_USER, DB_PASS))
+                {
+                    //Insert data
+                    String query = " insert into rejected_data (pos_id, terminal_id, payment_date, tran_type, amount, case_id, status, rrn_no, file_id)"
+                            + " values (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    PreparedStatement preparedStmt = conn.prepareStatement(query);
+                    preparedStmt.setString(1, posId);
+                    preparedStmt.setString(2, terminalId);
+                    preparedStmt.setString(3, paymentDate);
+                    preparedStmt.setString(4, tranType);
+                    preparedStmt.setString(5, amount);
+                    preparedStmt.setString(6, caseId);
+                    preparedStmt.setString(7, status);
+                    preparedStmt.setString(8, rrnNo);
+                    preparedStmt.setLong(9, fileId);
+                    preparedStmt.execute();
+                }
+            }
+            catch (ClassNotFoundException | SQLException ex)
+            {
+                LOGGER.error("Save Rejected Info# " + ex.toString());
+                saveErrorLog("Save Rejected Info", ex.toString());
+                System.out.println(ex.toString());
+            }
         }
     }
     
