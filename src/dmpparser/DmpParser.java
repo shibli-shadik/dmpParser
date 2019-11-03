@@ -77,7 +77,7 @@ public class DmpParser
         rollingAppender.setLayout(layout);
         rollingAppender.activateOptions();
         rollingAppender.setMaxFileSize("10MB");
-        rollingAppender.setMaxBackupIndex(2);
+        rollingAppender.setMaxBackupIndex(4);
         
         // creates console appender
         //ConsoleAppender consoleAppender = new ConsoleAppender();
@@ -154,6 +154,7 @@ public class DmpParser
         }
         catch (Exception ex)
         {
+            LOGGER.error("Read Config File# " + ex.toString());
             saveErrorLog("Read Config File", ex.toString());
             System.out.println(ex.toString());
         }
@@ -165,6 +166,7 @@ public class DmpParser
             }
             catch (IOException ex)
             {
+                LOGGER.error("Read Config File# " + ex.toString());
                 saveErrorLog("Read Config File", ex.toString());
                 System.out.println(ex.toString());
             }
@@ -230,6 +232,8 @@ public class DmpParser
                 osSlash = "\\";
             }
             
+            int i = 0;
+            
             while(rs.next())
             {
                 //System.out.println(rs.getString(1) + "  " + rs.getString(2));
@@ -250,11 +254,16 @@ public class DmpParser
                     moveFile(SRC_FOLDER + osSlash + fileName, ERR_FOLDER + osSlash + fileName);
                     updateRegister(FileStatus.REJECTED.ordinal(), totalLine, registerId);
                 }
+                
+                i++;
             }
+            
+            LOGGER.info("Total File Processed: " + i);
         }
         catch (ClassNotFoundException | SQLException ex)
         {
-            saveErrorLog("Read New Files", ex.toString());
+            LOGGER.error("Read New Files# " + ex.toString());
+            //saveErrorLog("Read New Files", ex.toString());
             System.out.println(ex.toString());
         }
     }
@@ -468,6 +477,7 @@ public class DmpParser
         }
         catch (ClassNotFoundException | SQLException ex)
         {
+            LOGGER.error("Staging# " + ex.toString());
             saveErrorLog("Staging", ex.toString());
             System.out.println(ex.toString());
         }
@@ -488,6 +498,7 @@ public class DmpParser
         }
         catch (ClassNotFoundException | SQLException ex)
         {
+            LOGGER.error("Delete Pre Staging Info# " + ex.toString());
             saveErrorLog("Delete Pre Staging Info", ex.toString());
             System.out.println(ex.toString());
         }
@@ -516,6 +527,7 @@ public class DmpParser
         }
         catch (ClassNotFoundException | SQLException ex)
         {
+            LOGGER.error("Save Pre Staging Info# " + ex.toString());
             saveErrorLog("Save Pre Staging Info", ex.toString());
             System.out.println(ex.toString());
         }
@@ -588,6 +600,7 @@ public class DmpParser
         }
         catch (ClassNotFoundException | SQLException ex)
         {
+            LOGGER.error("Save Error Log# " + ex.toString());
             System.out.println(ex.toString());
         }
     }
@@ -631,6 +644,7 @@ public class DmpParser
         }
         catch (ClassNotFoundException | SQLException ex)
         {
+            LOGGER.error("Save Staging Info# " + ex.toString());
             saveErrorLog("Save Staging Info", ex.toString());
             System.out.println(ex.toString());
         }
@@ -659,7 +673,8 @@ public class DmpParser
         }
         catch (ClassNotFoundException | SQLException ex)
         {
-            saveErrorLog("Save Staging Info", ex.toString());
+            LOGGER.error("Process Staging# " + ex.toString());
+            saveErrorLog("Process Staging", ex.toString());
             System.out.println(ex.toString());
         }
     }
@@ -1014,6 +1029,7 @@ public class DmpParser
         }
         catch (ClassNotFoundException | SQLException ex)
         {
+            LOGGER.error("Save Transaction Log# " + ex.toString());
             saveErrorLog("Save Transaction Log", ex.toString());
             System.out.println(ex.toString());
         }
@@ -1041,6 +1057,7 @@ public class DmpParser
         }
         catch (ClassNotFoundException | SQLException ex)
         {
+            LOGGER.error("Update Register# " + ex.toString());
             saveErrorLog("Update Register", ex.toString());
             System.out.println(ex.toString());
         }

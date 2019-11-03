@@ -1,4 +1,6 @@
-2019-10-31 17:51:08.264  INFO [main] dmpparser.DmpParser  - Parser execution started
-2019-10-31 17:51:13.050  INFO [main] dmpparser.DmpParser  - Parser execution completed
-2019-10-31 17:51:30.537  INFO [main] dmpparser.DmpParser  - Parser execution started
-2019-10-31 17:51:30.992  INFO [main] dmpparser.DmpParser  - Parser execution completed
+2019-11-03 11:20:32.343  INFO [main] dmpparser.DmpParser  - Parser execution started
+2019-11-03 11:20:42.038 ERROR [main] dmpparser.DmpParser  - Total File Processed: 3
+2019-11-03 11:20:42.039  INFO [main] dmpparser.DmpParser  - Parser execution completed
+2019-11-03 11:21:25.726  INFO [main] dmpparser.DmpParser  - Parser execution started
+2019-11-03 11:21:26.069  INFO [main] dmpparser.DmpParser  - Total File Processed: 0
+2019-11-03 11:21:26.069  INFO [main] dmpparser.DmpParser  - Parser execution completed
