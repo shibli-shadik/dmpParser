@@ -25,7 +25,6 @@ import java.util.List;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
@@ -73,7 +72,7 @@ public class DmpParser
         
         // creates daily rolling file appender
         RollingFileAppender rollingAppender = new RollingFileAppender();
-        rollingAppender.setFile("./logs/app.log");
+        rollingAppender.setFile("./logs/app_parser.log");
         rollingAppender.setLayout(layout);
         rollingAppender.activateOptions();
         rollingAppender.setMaxFileSize("10MB");
@@ -89,7 +88,6 @@ public class DmpParser
         rootLogger.setLevel(Level.DEBUG);
         rootLogger.addAppender(rollingAppender);
         //rootLogger.addAppender(consoleAppender);
-        
     }
     
     private static void readConfigFile()
