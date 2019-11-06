@@ -1,0 +1,8 @@
+SRC_FOLDER#F:\projects\dmp\testing\src
+DEST_FOLDER#F:\projects\dmp\testing\dest
+ERR_FOLDER#F:\projects\dmp\testing\error
+DB_CONN_URL#jdbc:mysql://localhost:3306/dmpapp
+DB_USER#root
+DB_PASS#123
+PAYMENT_API_URL#http://192.168.10.193:9192/CardPaymentService.asmx?op=DoCardPayment
+REVERSAL_API_URL#http://192.168.10.193:9192/CardPaymentService.asmx?op=DoCardPayment

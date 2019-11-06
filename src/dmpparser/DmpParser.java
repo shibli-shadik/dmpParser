@@ -29,6 +29,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 import org.apache.log4j.RollingFileAppender;
+import org.apache.log4j.DailyRollingFileAppender;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -54,13 +55,43 @@ public class DmpParser
     
     public static void main(String[] args)
     {
-        createLog();
+        //createLog();
+        createLogDaily();
         LOGGER.info("Parser execution started");
         
         readConfigFile();
         readNewFiles();
         
         LOGGER.info("Parser execution completed");
+    }
+    
+    private static void createLogDaily()
+    {
+        // creates pattern layout
+        PatternLayout layout = new PatternLayout();
+        String conversionPattern = "%d [%p] %c %M - %m%n";
+        layout.setConversionPattern(conversionPattern);
+        
+        // creates daily rolling file appender
+        DailyRollingFileAppender rollingAppender = new DailyRollingFileAppender();
+        
+        if("L".equals(OS))
+        {
+            rollingAppender.setFile("/app/logs/parser/app.log");
+        }
+        else if("W".equals(OS))
+        {
+            rollingAppender.setFile("./logs/parser/app.log");
+        }
+        
+        rollingAppender.setDatePattern("'.'yyyy-MM-dd");
+        rollingAppender.setLayout(layout);
+        rollingAppender.activateOptions();
+        
+        // configures the root logger
+        Logger rootLogger = Logger.getRootLogger();
+        rootLogger.setLevel(Level.DEBUG);
+        rootLogger.addAppender(rollingAppender);
     }
     
     private static void createLog()
@@ -72,7 +103,16 @@ public class DmpParser
         
         // creates daily rolling file appender
         RollingFileAppender rollingAppender = new RollingFileAppender();
-        rollingAppender.setFile("./logs/app_parser.log");
+        
+        if("L".equals(OS))
+        {
+            rollingAppender.setFile("/app/logs/app_parser.log");
+        }
+        else if("W".equals(OS))
+        {
+            rollingAppender.setFile("./logs/app_parser.log");
+        }
+        
         rollingAppender.setLayout(layout);
         rollingAppender.activateOptions();
         rollingAppender.setMaxFileSize("10MB");
