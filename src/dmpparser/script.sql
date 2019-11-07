@@ -36,6 +36,7 @@ CREATE TABLE `transactions` (
 ); 
 
 CREATE TABLE `rejected_data` (
+ `id` bigint(20) NOT NULL AUTO_INCREMENT,   
  `pos_id` varchar(50) NOT NULL,
  `terminal_id` varchar(50) NOT NULL,
  `payment_date` varchar(50) NOT NULL,
@@ -45,5 +46,6 @@ CREATE TABLE `rejected_data` (
  `status` varchar(5) NOT NULL,
  `rrn_no` varchar(50) NOT NULL,
  `file_id` bigint(20) NOT NULL,
+ PRIMARY KEY (`id`),
  FOREIGN KEY (file_id) REFERENCES file_register(id)   
 );

@@ -42,7 +42,7 @@ import org.json.simple.JSONValue;
 
 public class DmpParser
 {
-    private static String OS = "W";//"L" : W = Windows, L = Linux
+    private static String OS = "L";//"L" : W = Windows, L = Linux
     private static String SRC_FOLDER = null;
     private static String DEST_FOLDER = null;
     private static String ERR_FOLDER = null;

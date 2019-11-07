@@ -1,3 +1,6 @@
 2019-11-06 17:22:35,588 [INFO] dmpparser.DmpParser main - Parser execution started
 2019-11-06 17:22:35,815 [INFO] dmpparser.DmpParser readNewFiles - Total File Processed: 0
 2019-11-06 17:22:35,815 [INFO] dmpparser.DmpParser main - Parser execution completed
+2019-11-06 17:57:27,597 [INFO] dmpparser.DmpParser main - Parser execution started
+2019-11-06 17:57:28,303 [INFO] dmpparser.DmpParser readNewFiles - Total File Processed: 1
+2019-11-06 17:57:28,304 [INFO] dmpparser.DmpParser main - Parser execution completed
